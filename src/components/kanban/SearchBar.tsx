@@ -18,19 +18,21 @@ interface SearchBarProps {
 }
 
 const statusColors: Record<TaskStatus, string> = {
+  RECURRING: 'bg-purple-500',
   BACKLOG: 'bg-slate-500',
-  TODO: 'bg-blue-500',
-  IN_PROGRESS: 'bg-amber-500',
-  IN_REVIEW: 'bg-purple-500',
+  IN_PROGRESS: 'bg-blue-500',
+  REVIEW: 'bg-amber-500',
+  BLOCKED: 'bg-red-500',
   COMPLETED: 'bg-emerald-500',
 }
 
 const statusLabels: Record<TaskStatus, string> = {
+  RECURRING: 'Recurring',
   BACKLOG: 'Backlog',
-  TODO: 'To Do',
   IN_PROGRESS: 'In Progress',
-  IN_REVIEW: 'Review',
-  COMPLETED: 'Done',
+  REVIEW: 'Review',
+  BLOCKED: 'Blocked',
+  COMPLETED: 'Completed',
 }
 
 export function SearchBar({ onSelectTask }: SearchBarProps) {
@@ -41,7 +43,7 @@ export function SearchBar({ onSelectTask }: SearchBarProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<NodeJS.Timeout>()
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
