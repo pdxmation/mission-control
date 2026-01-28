@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma"
 import { KanbanBoard } from "@/components/kanban"
 import { ActivityFeed } from "@/components/kanban/ActivityFeed"
+import { MobileActivityPanel } from "@/components/kanban/MobileActivityPanel"
 import { TaskWithRelations } from "@/components/kanban/types"
 
 export const dynamic = 'force-dynamic'
@@ -72,18 +73,23 @@ export default async function MissionControl() {
   }))
 
   return (
-    <div className="max-w-[1800px] mx-auto px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6 flex gap-4 md:gap-6">
-      {/* Kanban Board */}
-      <div className="flex-1 min-w-0">
-        <KanbanBoard initialTasks={serializedTasks} />
-      </div>
-      
-      {/* Activity Feed Sidebar */}
-      <div className="w-80 shrink-0 hidden xl:block">
-        <div className="sticky top-24 h-[calc(100vh-8rem)]">
-          <ActivityFeed initialActivities={serializedActivities} />
+    <>
+      <div className="max-w-[1800px] mx-auto px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6 flex gap-4 md:gap-6">
+        {/* Kanban Board */}
+        <div className="flex-1 min-w-0">
+          <KanbanBoard initialTasks={serializedTasks} />
+        </div>
+        
+        {/* Activity Feed Sidebar - Desktop only */}
+        <div className="w-80 shrink-0 hidden xl:block">
+          <div className="sticky top-24 h-[calc(100vh-8rem)]">
+            <ActivityFeed initialActivities={serializedActivities} />
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Mobile Activity Panel - Shows FAB + slide-up panel on mobile/tablet */}
+      <MobileActivityPanel initialActivities={serializedActivities} />
+    </>
   )
 }
