@@ -80,7 +80,16 @@ export function SearchBar({ onSelectTask }: SearchBarProps) {
       const res = await fetch(`/api/tasks/search?q=${encodeURIComponent(searchQuery)}&limit=8`)
       if (res.ok) {
         const data = await res.json()
-        setResults(data)
+        // API returns { results: [{ task, similarity }] }
+        const mappedResults: SearchResult[] = (data.results || []).map((r: any) => ({
+          id: r.task.id,
+          title: r.task.title,
+          description: r.task.description,
+          status: r.task.status,
+          priority: r.task.priority,
+          similarity: r.similarity,
+        }))
+        setResults(mappedResults)
         setOpen(true)
         setSelectedIndex(0)
       }
