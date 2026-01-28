@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateApiToken, unauthorizedResponse } from '../../../../lib/api-auth'
-import { initializeVectorStore, backfillEmbeddings } from '../../../../lib/embeddings'
+import { backfillEmbeddings } from '../../../../lib/embeddings'
+import { ensureVectorStore } from '../../../../lib/vector-init'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     const result: any = { success: true, actions: [] }
     
     if (action === 'init' || action === 'init-and-backfill') {
-      await initializeVectorStore()
+      await ensureVectorStore()
       result.actions.push('initialized')
     }
     

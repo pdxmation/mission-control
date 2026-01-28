@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { prisma } from './prisma'
+import { ensureVectorStore } from './vector-init'
 
 const EMBEDDING_MODEL = 'text-embedding-ada-002'
 const EMBEDDING_DIMENSIONS = 1536
@@ -11,42 +12,6 @@ function getOpenAI(): OpenAI {
     _openai = new OpenAI()
   }
   return _openai
-}
-
-/**
- * Initialize pgvector extension and create embeddings table
- * Run once on startup or via migration
- */
-export async function initializeVectorStore(): Promise<void> {
-  try {
-    // Enable pgvector extension
-    await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS vector`)
-    
-    // Create embeddings table if not exists
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS task_embedding (
-        id TEXT PRIMARY KEY,
-        task_id TEXT UNIQUE NOT NULL REFERENCES task(id) ON DELETE CASCADE,
-        embedding vector(${EMBEDDING_DIMENSIONS}),
-        model TEXT DEFAULT '${EMBEDDING_MODEL}',
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `)
-    
-    // Create index for fast similarity search
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS task_embedding_vector_idx 
-      ON task_embedding 
-      USING ivfflat (embedding vector_cosine_ops)
-      WITH (lists = 100)
-    `)
-    
-    console.log('✓ Vector store initialized')
-  } catch (error) {
-    // If ivfflat fails (not enough rows), try without it
-    console.warn('Note: IVFFlat index may need more data, using default index')
-  }
 }
 
 /**
@@ -109,6 +74,9 @@ export async function embedTask(task: {
   }
   
   try {
+    // Ensure table exists before writing
+    await ensureVectorStore()
+    
     const embedding = await generateEmbedding(text)
     const embeddingStr = `[${embedding.join(',')}]`
     const id = `emb_${task.id}`
@@ -135,6 +103,9 @@ export async function searchTasksBySimilarity(
   limit: number = 10,
   minSimilarity: number = 0.5
 ): Promise<Array<{ taskId: string; similarity: number }>> {
+  // Ensure table exists before querying
+  await ensureVectorStore()
+  
   const queryEmbedding = await generateEmbedding(query)
   const embeddingStr = `[${queryEmbedding.join(',')}]`
   
