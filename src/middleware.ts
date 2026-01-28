@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from "next/server"
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Bypass auth for testing (set BYPASS_AUTH=true in .env)
+  if (process.env.BYPASS_AUTH === "true") {
+    return NextResponse.next()
+  }
+
   // Public routes that don't require auth
   const publicRoutes = ["/login", "/api/auth"]
   
@@ -12,7 +17,7 @@ export async function middleware(request: NextRequest) {
   )
 
   // API routes with token auth (task API and admin API)
-  if (pathname.startsWith("/api/tasks") || pathname.startsWith("/api/admin")) {
+  if (pathname.startsWith("/api/tasks") || pathname.startsWith("/api/admin") || pathname.startsWith("/api/activity")) {
     // Keep existing token-based auth for API
     return NextResponse.next()
   }

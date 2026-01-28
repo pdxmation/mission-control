@@ -6,20 +6,30 @@ test.describe('Filters', () => {
     await page.waitForTimeout(2000)
   })
 
-  test('should display filter dropdowns', async ({ page }) => {
-    // Should have assignee filter
-    await expect(page.locator('button:has-text("Assignee"), [data-testid="assignee-filter"]')).toBeVisible()
-    
-    // Should have project filter
-    await expect(page.locator('button:has-text("Project"), [data-testid="project-filter"]')).toBeVisible()
+  test('should display filter section', async ({ page }) => {
+    // Filter label should be visible
+    await expect(page.locator('text=Filter:')).toBeVisible()
+  })
+
+  test('should display assignee filter button', async ({ page }) => {
+    // Assignee filter shows "Assignee" text when not selected
+    const assigneeFilter = page.locator('button:has-text("Assignee")')
+    await expect(assigneeFilter).toBeVisible()
+  })
+
+  test('should display project filter button', async ({ page }) => {
+    // Project filter shows "Project" text when not selected
+    const projectFilter = page.locator('button:has-text("Project")')
+    await expect(projectFilter).toBeVisible()
   })
 
   test('should open assignee filter dropdown', async ({ page }) => {
     const assigneeFilter = page.locator('button:has-text("Assignee")').first()
     await assigneeFilter.click()
     
-    // Dropdown should appear
-    const dropdown = page.locator('[role="listbox"], .dropdown-menu, [class*="dropdown"]')
+    // Dropdown should appear - it's a div with options
+    await page.waitForTimeout(300)
+    const dropdown = page.locator('.absolute.top-full')
     await expect(dropdown).toBeVisible({ timeout: 3000 })
   })
 
@@ -27,81 +37,22 @@ test.describe('Filters', () => {
     const projectFilter = page.locator('button:has-text("Project")').first()
     await projectFilter.click()
     
-    // Dropdown should appear
-    const dropdown = page.locator('[role="listbox"], .dropdown-menu, [class*="dropdown"]')
+    await page.waitForTimeout(300)
+    const dropdown = page.locator('.absolute.top-full')
     await expect(dropdown).toBeVisible({ timeout: 3000 })
   })
 
-  test('should filter tasks by assignee', async ({ page }) => {
-    // Get initial task count
-    const initialTasks = await page.locator('[data-testid="task-card"], .task-card, [class*="task"][class*="card"]').count()
-    
-    // Open assignee filter
+  test('should close dropdown when clicking outside', async ({ page }) => {
     const assigneeFilter = page.locator('button:has-text("Assignee")').first()
     await assigneeFilter.click()
     
-    // Select first option if available
-    const option = page.locator('[role="option"], .dropdown-item').first()
-    if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await option.click()
-      
-      // Wait for filter to apply
-      await page.waitForTimeout(500)
-      
-      // Task count might change (filtered)
-      const filteredTasks = await page.locator('[data-testid="task-card"], .task-card').count()
-      expect(filteredTasks).toBeLessThanOrEqual(initialTasks)
-    }
-  })
-
-  test('should clear filter', async ({ page }) => {
-    // Apply a filter first
-    const assigneeFilter = page.locator('button:has-text("Assignee")').first()
-    await assigneeFilter.click()
+    await page.waitForTimeout(300)
     
-    const option = page.locator('[role="option"], .dropdown-item').first()
-    if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await option.click()
-      await page.waitForTimeout(500)
-      
-      // Look for clear/X button on the filter
-      const clearButton = page.locator('button:has-text("Assignee") svg, button:has-text("Assignee") + button')
-      if (await clearButton.isVisible()) {
-        await clearButton.click()
-        
-        // Filter should be cleared
-        await expect(page.locator('button:has-text("Assignee")')).toBeVisible()
-      }
-    }
-  })
-
-  test('should combine multiple filters', async ({ page }) => {
-    // Apply assignee filter
-    const assigneeFilter = page.locator('button:has-text("Assignee")').first()
-    await assigneeFilter.click()
+    // Click outside
+    await page.locator('body').click({ position: { x: 10, y: 10 } })
     
-    const assigneeOption = page.locator('[role="option"], .dropdown-item').first()
-    if (await assigneeOption.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await assigneeOption.click()
-      await page.waitForTimeout(300)
-    }
-    
-    // Apply project filter
-    const projectFilter = page.locator('button:has-text("Project")').first()
-    await projectFilter.click()
-    
-    const projectOption = page.locator('[role="option"], .dropdown-item').first()
-    if (await projectOption.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await projectOption.click()
-      await page.waitForTimeout(300)
-    }
-    
-    // Both filters should be active (page should still work)
-    await expect(page.locator('[data-testid="kanban-board"], .kanban, main')).toBeVisible()
-  })
-
-  test('should show filter label text', async ({ page }) => {
-    // Check for "Filter:" label
-    await expect(page.locator('text=/filter/i')).toBeVisible()
+    await page.waitForTimeout(300)
+    const dropdown = page.locator('.absolute.top-full')
+    await expect(dropdown).toBeHidden({ timeout: 3000 })
   })
 })

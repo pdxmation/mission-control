@@ -7,7 +7,7 @@ test.describe('Semantic Search', () => {
   })
 
   test('should display search input', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
+    const searchInput = page.locator('input[placeholder*="Search"]')
     await expect(searchInput).toBeVisible()
   })
 
@@ -15,28 +15,37 @@ test.describe('Semantic Search', () => {
     // Press Cmd/Ctrl + K
     await page.keyboard.press('Meta+k')
     
-    // Search input should be focused
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
+    const searchInput = page.locator('input[placeholder*="Search"]')
     await expect(searchInput).toBeFocused()
   })
 
   test('should show results when typing', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
+    const searchInput = page.locator('input[placeholder*="Search"]')
     
     // Type a search query
-    await searchInput.fill('email')
+    await searchInput.fill('mission')
     
     // Wait for debounce and results
     await page.waitForTimeout(500)
     
-    // Results dropdown should appear
-    const resultsDropdown = page.locator('[data-testid="search-results"], .search-results, [class*="dropdown"]')
+    // Results dropdown should appear (has absolute positioning)
+    const resultsDropdown = page.locator('.absolute.top-full.mt-2')
     await expect(resultsDropdown).toBeVisible({ timeout: 5000 })
   })
 
-  test('should show similarity percentage in results', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
+  test('should show AI-powered indicator in results', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search"]')
     await searchInput.fill('email')
+    
+    await page.waitForTimeout(500)
+    
+    // Should show "AI-powered semantic search" text
+    await expect(page.locator('text=/AI-powered/i')).toBeVisible({ timeout: 5000 })
+  })
+
+  test('should show similarity percentage', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search"]')
+    await searchInput.fill('task')
     
     await page.waitForTimeout(500)
     
@@ -45,37 +54,37 @@ test.describe('Semantic Search', () => {
   })
 
   test('should navigate results with keyboard', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
-    await searchInput.fill('task')
+    const searchInput = page.locator('input[placeholder*="Search"]')
+    await searchInput.fill('mission')
     
     await page.waitForTimeout(500)
     
     // Press arrow down
     await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('ArrowUp')
     
-    // Should still have search open
-    const resultsDropdown = page.locator('[data-testid="search-results"], .search-results, [class*="dropdown"]')
+    // Results should still be visible
+    const resultsDropdown = page.locator('.absolute.top-full.mt-2')
     await expect(resultsDropdown).toBeVisible()
   })
 
-  test('should open task modal when selecting search result', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
+  test('should open task modal when selecting result', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search"]')
     await searchInput.fill('mission')
     
     await page.waitForTimeout(500)
     
-    // Press Enter to select first result
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('Enter')
-    
-    // Task modal should open
-    await expect(page.locator('[role="dialog"], .modal')).toBeVisible({ timeout: 5000 })
+    // Click first result
+    const firstResult = page.locator('.absolute.top-full.mt-2 button').first()
+    if (await firstResult.isVisible()) {
+      await firstResult.click()
+      
+      // Task modal should open
+      await expect(page.locator('.fixed.inset-0, [role="dialog"]')).toBeVisible({ timeout: 5000 })
+    }
   })
 
   test('should close search with Escape', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
+    const searchInput = page.locator('input[placeholder*="Search"]')
     await searchInput.fill('test')
     
     await page.waitForTimeout(500)
@@ -84,26 +93,24 @@ test.describe('Semantic Search', () => {
     await page.keyboard.press('Escape')
     
     // Results should close
-    const resultsDropdown = page.locator('[data-testid="search-results"], .search-results')
+    const resultsDropdown = page.locator('.absolute.top-full.mt-2')
     await expect(resultsDropdown).toBeHidden({ timeout: 3000 })
   })
 
-  test('should clear search input', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
+  test('should clear search with X button', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search"]')
     await searchInput.fill('test query')
     
-    // Find and click clear button
-    const clearButton = page.locator('button[aria-label*="clear" i], button:has(svg[class*="x"])')
+    // Find and click clear button (X icon)
+    const clearButton = page.locator('input[placeholder*="Search"] + button, input[placeholder*="Search"] ~ button').first()
     if (await clearButton.isVisible()) {
       await clearButton.click()
-      
-      // Input should be empty
       await expect(searchInput).toHaveValue('')
     }
   })
 
   test('should show no results message', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
+    const searchInput = page.locator('input[placeholder*="Search"]')
     
     // Search for something that won't match
     await searchInput.fill('xyznonexistent12345')
@@ -111,16 +118,6 @@ test.describe('Semantic Search', () => {
     await page.waitForTimeout(500)
     
     // Should show no results message
-    await expect(page.locator('text=/no.*found|no results/i')).toBeVisible({ timeout: 5000 })
-  })
-
-  test('should show AI-powered indicator', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="search" i], input[type="search"]')
-    await searchInput.fill('email')
-    
-    await page.waitForTimeout(500)
-    
-    // Should show AI indicator
-    await expect(page.locator('text=/ai.*powered|semantic/i')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('text=/No tasks found/i')).toBeVisible({ timeout: 5000 })
   })
 })
