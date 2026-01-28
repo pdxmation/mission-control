@@ -106,19 +106,33 @@ export async function POST(request: NextRequest) {
       _max: { position: true }
     })
     
+    // Auto-set dates based on status
+    const status = body.status || 'BACKLOG'
+    let completedAt = body.completedAt ? new Date(body.completedAt) : null
+    let startedAt = body.startedAt ? new Date(body.startedAt) : null
+    
+    // Auto-set completedAt when creating as COMPLETED
+    if (status === 'COMPLETED' && !completedAt) {
+      completedAt = new Date()
+    }
+    // Auto-set startedAt when creating as IN_PROGRESS
+    if (status === 'IN_PROGRESS' && !startedAt) {
+      startedAt = new Date()
+    }
+    
     const task = await prisma.task.create({
       data: {
         title: body.title,
         description: body.description,
-        status: body.status || 'BACKLOG',
+        status,
         priority: body.priority || 'MEDIUM',
         isRecurring: body.isRecurring || false,
         position: (maxPos._max.position || 0) + 1,
         assigneeId: body.assigneeId,
         projectId: body.projectId,
-        startedAt: body.startedAt ? new Date(body.startedAt) : null,
+        startedAt,
         statusNote: body.statusNote,
-        completedAt: body.completedAt ? new Date(body.completedAt) : null,
+        completedAt,
         outcome: body.outcome,
         blocker: body.blocker,
         need: body.need,
