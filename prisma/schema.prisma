@@ -17,11 +17,14 @@ model User {
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
+  avatar        String?   // Avatar URL for Kanban display
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
   sessions      Session[]
   accounts      Account[]
+  assignedTasks Task[]    @relation("TaskAssignee")
+  activityLogs  ActivityLog[]
 
   @@map("user")
 }
@@ -77,8 +80,10 @@ model Verification {
 // ============================================
 
 enum TaskStatus {
+  RECURRING
   IN_PROGRESS
   BACKLOG
+  REVIEW
   COMPLETED
   BLOCKED
 }
@@ -90,11 +95,59 @@ enum Priority {
   CRITICAL
 }
 
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#6366f1") // Default indigo color
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  tasks       Task[]
+
+  @@map("project")
+}
+
+model Label {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#10b981") // Default emerald color
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  tasks     TaskLabel[]
+
+  @@map("label")
+}
+
+model TaskLabel {
+  id        String   @id @default(cuid())
+  taskId    String
+  labelId   String
+  createdAt DateTime @default(now())
+  
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, labelId])
+  @@map("task_label")
+}
+
 model Task {
-  id        String     @id @default(cuid())
-  title     String
-  status    TaskStatus @default(BACKLOG)
-  priority  Priority   @default(MEDIUM)
+  id          String     @id @default(cuid())
+  title       String
+  description String?    // Task description for Kanban card
+  status      TaskStatus @default(BACKLOG)
+  priority    Priority   @default(MEDIUM)
+  isRecurring Boolean    @default(false) // For recurring tasks
+  position    Int        @default(0) // For ordering within columns
+  
+  // Relations
+  assigneeId  String?
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  projectId   String?
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  labels      TaskLabel[]
   
   // Status-specific fields
   startedAt   DateTime?
@@ -115,6 +168,30 @@ model Task {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  activityLogs ActivityLog[]
+  
   @@index([status])
   @@index([priority])
+  @@index([assigneeId])
+  @@index([projectId])
+  @@map("task")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String   // created, moved, completed, deleted, updated
+  details   String?  // JSON string with details like {from: "BACKLOG", to: "IN_PROGRESS"}
+  
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_log")
 }
