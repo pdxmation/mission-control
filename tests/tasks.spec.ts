@@ -14,13 +14,17 @@ test.describe('Task CRUD Operations', () => {
     // Wait for modal
     await expect(page.locator('.fixed.inset-0').first()).toBeVisible({ timeout: 3000 })
     
-    // Fill in task title
-    const titleInput = page.locator('input').first()
+    // Fill in task title - use the specific placeholder
+    const titleInput = page.locator('input[placeholder="Task title..."]')
     const testTitle = 'Playwright Test Task ' + Date.now()
     await titleInput.fill(testTitle)
     
-    // Save the task
-    const saveButton = page.locator('button:has-text("Save"), button:has-text("Create"), button[type="submit"]').first()
+    // Verify title is filled before clicking save
+    await expect(titleInput).toHaveValue(testTitle)
+    
+    // Save the task - button should now be enabled
+    const saveButton = page.locator('button[type="submit"]:has-text("Create")')
+    await expect(saveButton).toBeEnabled({ timeout: 3000 })
     await saveButton.click()
     
     // Wait for save
@@ -39,7 +43,7 @@ test.describe('Task CRUD Operations', () => {
     await expect(page.locator('.fixed.inset-0').first()).toBeVisible({ timeout: 3000 })
     
     // Should show input with value
-    const titleInput = page.locator('input').first()
+    const titleInput = page.locator('input[placeholder="Task title..."]')
     await expect(titleInput).toBeVisible()
   })
 
@@ -51,13 +55,17 @@ test.describe('Task CRUD Operations', () => {
     await page.waitForTimeout(500)
     
     // Edit title
-    const titleInput = page.locator('input').first()
+    const titleInput = page.locator('input[placeholder="Task title..."]')
     await titleInput.clear()
     const newTitle = 'Updated Title ' + Date.now()
     await titleInput.fill(newTitle)
     
-    // Save
-    const saveButton = page.locator('button:has-text("Save"), button[type="submit"]').first()
+    // Verify title is filled
+    await expect(titleInput).toHaveValue(newTitle)
+    
+    // Save - button text is "Update" when editing
+    const saveButton = page.locator('button[type="submit"]:has-text("Update")')
+    await expect(saveButton).toBeEnabled({ timeout: 3000 })
     await saveButton.click()
     
     // Wait for save

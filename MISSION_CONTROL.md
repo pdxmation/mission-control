@@ -2,7 +2,7 @@
 
 *R2's task ledger — what's done, what's in progress, what's next*
 
-**Live Dashboard:** http://hw4kwoogsck04s4gwgckk4g4.217.28.91.55.sslip.io
+**Live Dashboard:** https://moltmc.app
 
 ---
 

@@ -31,8 +31,9 @@ test.describe('Semantic Search', () => {
     const searchInput = page.locator('input[placeholder*="Search"]')
     await searchInput.fill('test query')
     
-    // Clear button appears when there's text
-    const clearButton = page.locator('button').filter({ has: page.locator('svg.lucide-x') })
+    // Clear button appears when there's text - target the one inside search container
+    const searchContainer = page.locator('div').filter({ has: page.locator('input[placeholder*="Search"]') }).first()
+    const clearButton = searchContainer.locator('button').filter({ has: page.locator('svg.lucide-x') })
     if (await clearButton.isVisible()) {
       await clearButton.click()
       await expect(searchInput).toHaveValue('')
@@ -85,6 +86,7 @@ test.describe('Semantic Search - With API', () => {
     
     await page.waitForTimeout(1000)
     
-    await expect(page.locator('text=/\\d+%.*match/i')).toBeVisible({ timeout: 5000 })
+    // Multiple results may appear - just check first one
+    await expect(page.locator('text=/\\d+%.*match/i').first()).toBeVisible({ timeout: 5000 })
   })
 })
