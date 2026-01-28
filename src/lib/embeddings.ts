@@ -83,7 +83,7 @@ export async function embedTask(task: {
     
     // Upsert embedding
     await prisma.$executeRawUnsafe(`
-      INSERT INTO task_embedding (id, task_id, embedding, updated_at)
+      INSERT INTO public.task_embedding (id, task_id, embedding, updated_at)
       VALUES ($1, $2, $3::vector, NOW())
       ON CONFLICT (task_id) 
       DO UPDATE SET embedding = $3::vector, updated_at = NOW()
@@ -114,7 +114,7 @@ export async function searchTasksBySimilarity(
     SELECT 
       task_id,
       1 - (embedding <=> '${embeddingStr}'::vector) as similarity
-    FROM task_embedding
+    FROM public.task_embedding
     WHERE 1 - (embedding <=> '${embeddingStr}'::vector) > ${minSimilarity}
     ORDER BY embedding <=> '${embeddingStr}'::vector
     LIMIT ${limit}
@@ -134,7 +134,7 @@ export async function searchTasksBySimilarity(
 export async function deleteTaskEmbedding(taskId: string): Promise<void> {
   try {
     await prisma.$executeRawUnsafe(
-      `DELETE FROM task_embedding WHERE task_id = $1`,
+      `DELETE FROM public.task_embedding WHERE task_id = $1`,
       taskId
     )
   } catch (error) {

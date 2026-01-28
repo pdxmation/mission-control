@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     
     // Check if table exists and count embeddings
     const result = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-      `SELECT COUNT(*) as count FROM task_embedding`
+      `SELECT COUNT(*) as count FROM public.task_embedding`
     ).catch(() => null)
     
     if (!result) {
