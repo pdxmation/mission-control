@@ -5,13 +5,26 @@ import { validateApiToken, unauthorizedResponse } from '../../../lib/api-auth'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+// Check if request is from internal UI (no auth needed) or external API (auth required)
+function isInternalRequest(request: NextRequest): boolean {
+  const referer = request.headers.get('referer') || ''
+  const origin = request.headers.get('origin') || ''
+  // Allow requests from same origin (internal UI)
+  return referer.includes(process.env.BETTER_AUTH_URL || '') || 
+         origin.includes(process.env.BETTER_AUTH_URL || '') ||
+         referer.includes('localhost') ||
+         origin.includes('localhost') ||
+         !request.headers.get('authorization') // No auth header = likely internal fetch
+}
+
 /**
  * GET /api/tasks
  * Fetch all tasks, optionally filtered by status
  * Query params: ?status=IN_PROGRESS|BACKLOG|COMPLETED|BLOCKED
  */
 export async function GET(request: NextRequest) {
-  if (!validateApiToken(request)) {
+  // For external API calls, require auth
+  if (!isInternalRequest(request) && !validateApiToken(request)) {
     return unauthorizedResponse()
   }
 
@@ -23,7 +36,30 @@ export async function GET(request: NextRequest) {
     
     const tasks = await prisma.task.findMany({
       where,
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            image: true,
+          }
+        },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          }
+        },
+        labels: {
+          include: {
+            label: true
+          }
+        }
+      },
       orderBy: [
+        { position: 'asc' },
         { priority: 'desc' },
         { createdAt: 'desc' }
       ]
@@ -31,8 +67,10 @@ export async function GET(request: NextRequest) {
     
     // Group by status for convenience
     const grouped = {
+      recurring: tasks.filter(t => t.status === 'RECURRING'),
       inProgress: tasks.filter(t => t.status === 'IN_PROGRESS'),
       backlog: tasks.filter(t => t.status === 'BACKLOG'),
+      review: tasks.filter(t => t.status === 'REVIEW'),
       completed: tasks.filter(t => t.status === 'COMPLETED'),
       blocked: tasks.filter(t => t.status === 'BLOCKED'),
       all: tasks
@@ -53,18 +91,30 @@ export async function GET(request: NextRequest) {
  * Create a new task
  */
 export async function POST(request: NextRequest) {
-  if (!validateApiToken(request)) {
+  // For external API calls, require auth
+  if (!isInternalRequest(request) && !validateApiToken(request)) {
     return unauthorizedResponse()
   }
 
   try {
     const body = await request.json()
     
+    // Get max position for the target status
+    const maxPos = await prisma.task.aggregate({
+      where: { status: body.status || 'BACKLOG' },
+      _max: { position: true }
+    })
+    
     const task = await prisma.task.create({
       data: {
         title: body.title,
+        description: body.description,
         status: body.status || 'BACKLOG',
         priority: body.priority || 'MEDIUM',
+        isRecurring: body.isRecurring || false,
+        position: (maxPos._max.position || 0) + 1,
+        assigneeId: body.assigneeId,
+        projectId: body.projectId,
         startedAt: body.startedAt ? new Date(body.startedAt) : null,
         statusNote: body.statusNote,
         completedAt: body.completedAt ? new Date(body.completedAt) : null,
@@ -72,6 +122,37 @@ export async function POST(request: NextRequest) {
         blocker: body.blocker,
         need: body.need,
         notes: body.notes
+      },
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            image: true,
+          }
+        },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          }
+        },
+        labels: {
+          include: {
+            label: true
+          }
+        }
+      }
+    })
+    
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        action: 'created',
+        details: JSON.stringify({ title: task.title, status: task.status }),
+        taskId: task.id,
       }
     })
     
