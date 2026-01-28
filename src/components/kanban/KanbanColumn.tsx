@@ -22,6 +22,8 @@ const colorMap: Record<string, string> = {
   slate: 'border-slate-500/50 bg-slate-500/5',
   blue: 'border-blue-500/50 bg-blue-500/5',
   amber: 'border-amber-500/50 bg-amber-500/5',
+  red: 'border-red-500/50 bg-red-500/5',
+  green: 'border-green-500/50 bg-green-500/5',
 }
 
 const headerColorMap: Record<string, string> = {
@@ -29,6 +31,8 @@ const headerColorMap: Record<string, string> = {
   slate: 'text-slate-400',
   blue: 'text-blue-400',
   amber: 'text-amber-400',
+  red: 'text-red-400',
+  green: 'text-green-400',
 }
 
 export function KanbanColumn({

@@ -49,4 +49,6 @@ export const KANBAN_COLUMNS: { id: TaskStatus; title: string; color: string }[] 
   { id: 'BACKLOG', title: 'Backlog', color: 'slate' },
   { id: 'IN_PROGRESS', title: 'In Progress', color: 'blue' },
   { id: 'REVIEW', title: 'Review', color: 'amber' },
+  { id: 'BLOCKED', title: 'Blocked', color: 'red' },
+  { id: 'COMPLETED', title: 'Completed', color: 'green' },
 ]
