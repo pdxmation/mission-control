@@ -2,13 +2,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { parseMissionControl } from "@/lib/parse-mission-control"
+import { prisma } from "../lib/prisma"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default function MissionControl() {
-  const { lastUpdated, inProgress, backlog, completed, blocked } = parseMissionControl()
+function formatDate(date: Date | null): string {
+  if (!date) return '-'
+  return date.toISOString().split('T')[0]
+}
+
+function priorityVariant(priority: string): "default" | "outline" | "secondary" {
+  switch (priority) {
+    case 'CRITICAL': return 'default'
+    case 'HIGH': return 'default'
+    default: return 'outline'
+  }
+}
+
+export default async function MissionControl() {
+  const tasks = await prisma.task.findMany({
+    orderBy: [
+      { priority: 'desc' },
+      { createdAt: 'desc' }
+    ]
+  })
+
+  const inProgress = tasks.filter(t => t.status === 'IN_PROGRESS')
+  const backlog = tasks.filter(t => t.status === 'BACKLOG')
+  const completed = tasks.filter(t => t.status === 'COMPLETED')
+  const blocked = tasks.filter(t => t.status === 'BLOCKED')
+
+  const lastUpdated = tasks.length > 0 
+    ? new Date(Math.max(...tasks.map(t => t.updatedAt.getTime()))).toLocaleString('en-GB', { timeZone: 'Europe/Prague' })
+    : 'No data'
 
   return (
     <main className="min-h-screen bg-background p-8">
@@ -80,13 +107,13 @@ export default function MissionControl() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {inProgress.map((item, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-medium">{item.task}</TableCell>
-                          <TableCell>{item.started}</TableCell>
+                      {inProgress.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.title}</TableCell>
+                          <TableCell>{formatDate(item.startedAt)}</TableCell>
                           <TableCell>
-                            <Badge variant={item.status.toLowerCase().includes("blocked") ? "destructive" : "secondary"}>
-                              {item.status}
+                            <Badge variant={item.statusNote?.toLowerCase().includes("blocked") ? "destructive" : "secondary"}>
+                              {item.statusNote || 'Active'}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-muted-foreground">{item.notes}</TableCell>
@@ -118,11 +145,11 @@ export default function MissionControl() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {backlog.map((item, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-medium">{item.task}</TableCell>
+                      {backlog.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.title}</TableCell>
                           <TableCell>
-                            <Badge variant={item.priority === "High" ? "default" : "outline"}>
+                            <Badge variant={priorityVariant(item.priority)}>
                               {item.priority}
                             </Badge>
                           </TableCell>
@@ -155,10 +182,10 @@ export default function MissionControl() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {completed.map((item, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-medium">{item.task}</TableCell>
-                          <TableCell>{item.completed}</TableCell>
+                      {completed.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.title}</TableCell>
+                          <TableCell>{formatDate(item.completedAt)}</TableCell>
                           <TableCell className="text-muted-foreground">{item.outcome}</TableCell>
                         </TableRow>
                       ))}
@@ -188,9 +215,9 @@ export default function MissionControl() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {blocked.map((item, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-medium">{item.task}</TableCell>
+                      {blocked.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.title}</TableCell>
                           <TableCell>
                             <Badge variant="destructive">{item.blocker}</Badge>
                           </TableCell>
@@ -206,7 +233,7 @@ export default function MissionControl() {
         </Tabs>
         
         <footer className="text-center text-muted-foreground text-sm pt-8 border-t">
-          <p>Data source: <code className="bg-muted px-1 rounded">MISSION_CONTROL.md</code></p>
+          <p>Data source: <code className="bg-muted px-1 rounded">PostgreSQL</code></p>
           <p className="mt-1">Refresh the page to see latest updates</p>
         </footer>
       </div>
