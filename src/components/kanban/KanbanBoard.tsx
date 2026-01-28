@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -14,22 +14,41 @@ import {
   DragOverEvent,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { TaskWithRelations, KANBAN_COLUMNS } from './types'
+import { TaskWithRelations, KANBAN_COLUMNS, TaskStatus } from './types'
 import { KanbanColumn } from './KanbanColumn'
 import { TaskCard } from './TaskCard'
 import { TaskModal, TaskFormData } from './TaskModal'
-import { TaskStatus } from './types'
+import { StatsBar } from './StatsBar'
+import { FilterBar } from './FilterBar'
+
+interface User {
+  id: string
+  name: string
+  avatar: string | null
+}
+
+interface Project {
+  id: string
+  name: string
+  color: string
+}
 
 interface KanbanBoardProps {
   initialTasks: TaskWithRelations[]
+  users?: User[]
+  projects?: Project[]
 }
 
-export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, users = [], projects = [] }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks)
   const [activeTask, setActiveTask] = useState<TaskWithRelations | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('BACKLOG')
+  
+  // Filters
+  const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null)
+  const [selectedProject, setSelectedProject] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -42,13 +61,47 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
     })
   )
 
+  // Extract unique assignees and projects from tasks if not provided
+  const assigneeOptions = useMemo(() => {
+    if (users.length > 0) return users
+    const seen = new Set<string>()
+    return tasks
+      .filter((t) => t.assignee && !seen.has(t.assignee.id) && seen.add(t.assignee.id))
+      .map((t) => ({
+        id: t.assignee!.id,
+        name: t.assignee!.name,
+        avatar: t.assignee!.avatar || t.assignee!.image,
+      }))
+  }, [tasks, users])
+
+  const projectOptions = useMemo(() => {
+    if (projects.length > 0) return projects
+    const seen = new Set<string>()
+    return tasks
+      .filter((t) => t.project && !seen.has(t.project.id) && seen.add(t.project.id))
+      .map((t) => ({
+        id: t.project!.id,
+        name: t.project!.name,
+        color: t.project!.color,
+      }))
+  }, [tasks, projects])
+
+  // Filter tasks
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      if (selectedAssignee && t.assigneeId !== selectedAssignee) return false
+      if (selectedProject && t.projectId !== selectedProject) return false
+      return true
+    })
+  }, [tasks, selectedAssignee, selectedProject])
+
   const getTasksByStatus = useCallback(
     (status: TaskStatus) => {
-      return tasks
+      return filteredTasks
         .filter((t) => t.status === status)
         .sort((a, b) => a.position - b.position)
     },
-    [tasks]
+    [filteredTasks]
   )
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -179,7 +232,21 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
   }
 
   return (
-    <>
+    <div className="space-y-6">
+      {/* Stats Bar */}
+      <StatsBar tasks={tasks} />
+      
+      {/* Filter Bar */}
+      <FilterBar
+        assignees={assigneeOptions}
+        projects={projectOptions}
+        selectedAssignee={selectedAssignee}
+        selectedProject={selectedProject}
+        onAssigneeChange={setSelectedAssignee}
+        onProjectChange={setSelectedProject}
+      />
+
+      {/* Kanban Board */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -221,6 +288,6 @@ export function KanbanBoard({ initialTasks }: KanbanBoardProps) {
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
       />
-    </>
+    </div>
   )
 }
