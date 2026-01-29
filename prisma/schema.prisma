@@ -195,3 +195,21 @@ model ActivityLog {
   @@index([createdAt])
   @@map("activity_log")
 }
+
+// ============================================
+// Second Brain / Documents
+// ============================================
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  type      String   @default("note")  // journal, note, concept, research
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([createdAt])
+  @@map("document")
+}
