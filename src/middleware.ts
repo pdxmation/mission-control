@@ -16,8 +16,8 @@ export async function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith(route + "/")
   )
 
-  // API routes with token auth (task API and admin API)
-  if (pathname.startsWith("/api/tasks") || pathname.startsWith("/api/admin") || pathname.startsWith("/api/activity")) {
+  // API routes with token auth (task API, documents API, and admin API)
+  if (pathname.startsWith("/api/tasks") || pathname.startsWith("/api/documents") || pathname.startsWith("/api/admin") || pathname.startsWith("/api/activity")) {
     // Keep existing token-based auth for API
     return NextResponse.next()
   }
