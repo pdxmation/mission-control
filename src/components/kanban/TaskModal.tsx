@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TaskWithRelations, KANBAN_COLUMNS } from './types'
+import { TaskWithRelations, KANBAN_COLUMNS, Subtask } from './types'
 import { TaskStatus, Priority } from './types'
 import { Button } from '@/components/ui/button'
-import { X } from 'lucide-react'
+import { X, Plus, Check, Square, Trash2 } from 'lucide-react'
 
 interface TaskModalProps {
   task?: TaskWithRelations | null
@@ -13,6 +13,7 @@ interface TaskModalProps {
   onClose: () => void
   onSave: (data: TaskFormData) => Promise<void>
   onDelete?: (taskId: string) => Promise<void>
+  onSubtaskChange?: () => void
 }
 
 export interface TaskFormData {
@@ -30,6 +31,7 @@ export function TaskModal({
   onClose,
   onSave,
   onDelete,
+  onSubtaskChange,
 }: TaskModalProps) {
   const [formData, setFormData] = useState<TaskFormData>({
     title: '',
@@ -39,6 +41,11 @@ export function TaskModal({
     isRecurring: false,
   })
   const [loading, setLoading] = useState(false)
+  
+  // Subtasks state
+  const [subtasks, setSubtasks] = useState<Subtask[]>([])
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const [subtaskLoading, setSubtaskLoading] = useState(false)
 
   useEffect(() => {
     if (task) {
@@ -49,6 +56,7 @@ export function TaskModal({
         priority: task.priority,
         isRecurring: task.isRecurring,
       })
+      setSubtasks(task.subtasks || [])
     } else {
       setFormData({
         title: '',
@@ -57,7 +65,9 @@ export function TaskModal({
         priority: 'MEDIUM',
         isRecurring: false,
       })
+      setSubtasks([])
     }
+    setNewSubtaskTitle('')
   }, [task, defaultStatus])
 
   if (!isOpen) return null
@@ -85,6 +95,67 @@ export function TaskModal({
       setLoading(false)
     }
   }
+
+  // Subtask handlers
+  const handleAddSubtask = async () => {
+    if (!task || !newSubtaskTitle.trim()) return
+    
+    setSubtaskLoading(true)
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/subtasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newSubtaskTitle.trim() })
+      })
+      
+      if (response.ok) {
+        const newSubtask = await response.json()
+        setSubtasks([...subtasks, newSubtask])
+        setNewSubtaskTitle('')
+        onSubtaskChange?.()
+      }
+    } catch (error) {
+      console.error('Failed to add subtask:', error)
+    } finally {
+      setSubtaskLoading(false)
+    }
+  }
+
+  const handleToggleSubtask = async (subtask: Subtask) => {
+    try {
+      const response = await fetch(`/api/subtasks/${subtask.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: !subtask.completed })
+      })
+      
+      if (response.ok) {
+        const updated = await response.json()
+        setSubtasks(subtasks.map(s => s.id === updated.id ? updated : s))
+        onSubtaskChange?.()
+      }
+    } catch (error) {
+      console.error('Failed to toggle subtask:', error)
+    }
+  }
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    try {
+      const response = await fetch(`/api/subtasks/${subtaskId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        setSubtasks(subtasks.filter(s => s.id !== subtaskId))
+        onSubtaskChange?.()
+      }
+    } catch (error) {
+      console.error('Failed to delete subtask:', error)
+    }
+  }
+
+  const completedCount = subtasks.filter(s => s.completed).length
+  const totalCount = subtasks.length
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -169,6 +240,83 @@ export function TaskModal({
               </select>
             </div>
           </div>
+
+          {/* Subtasks Section - only show for existing tasks */}
+          {task && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                Subtasks
+                {totalCount > 0 && (
+                  <span className="ml-2 text-muted-foreground font-normal">
+                    ({completedCount}/{totalCount})
+                  </span>
+                )}
+              </label>
+              
+              {/* Subtask list */}
+              <div className="space-y-1 mb-2">
+                {subtasks.map((subtask) => (
+                  <div
+                    key={subtask.id}
+                    className="flex items-center gap-2 group px-2 py-1.5 rounded-md hover:bg-muted/50"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSubtask(subtask)}
+                      className="flex-shrink-0 text-muted-foreground hover:text-foreground"
+                    >
+                      {subtask.completed ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </button>
+                    <span
+                      className={`flex-1 text-sm ${
+                        subtask.completed ? 'line-through text-muted-foreground' : ''
+                      }`}
+                    >
+                      {subtask.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSubtask(subtask.id)}
+                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Add subtask input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddSubtask()
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  placeholder="Add subtask..."
+                  disabled={subtaskLoading}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddSubtask}
+                  disabled={!newSubtaskTitle.trim() || subtaskLoading}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Recurring Toggle */}
           <div className="flex items-center gap-2">

@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { TaskWithRelations } from './types'
 import { Badge } from '@/components/ui/badge'
 import { formatDistanceToNow } from 'date-fns'
+import { CheckSquare } from 'lucide-react'
 
 interface TaskCardProps {
   task: TaskWithRelations
@@ -65,6 +66,24 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
           {task.description}
         </p>
+      )}
+
+      {/* Subtasks progress */}
+      {task.subtasks && task.subtasks.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-2">
+          <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-green-500 transition-all duration-300"
+              style={{ 
+                width: `${(task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100}%` 
+              }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+          </span>
+        </div>
       )}
 
       {/* Footer: assignee + time */}
