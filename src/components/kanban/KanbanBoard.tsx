@@ -46,7 +46,7 @@ export function KanbanBoard({ initialTasks, users = [], projects = [] }: KanbanB
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('BACKLOG')
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   
   // Filters
   const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null)
@@ -54,6 +54,15 @@ export function KanbanBoard({ initialTasks, users = [], projects = [] }: KanbanB
   
   // Track if drag is in progress to prevent refresh during drag
   const isDragging = useRef(false)
+
+  // Track if component has mounted (for SSR hydration)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Set initial refresh time and mounted state on client to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true)
+    setLastRefresh(new Date())
+  }, [])
 
   // Auto-refresh every 60 seconds
   useEffect(() => {
@@ -351,8 +360,12 @@ export function KanbanBoard({ initialTasks, users = [], projects = [] }: KanbanB
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <StatsBar tasks={tasks} />
         <div className="flex items-center justify-end gap-2 text-xs text-gray-500">
-          <span className="hidden sm:inline">Updated {lastRefresh.toLocaleTimeString()}</span>
-          <span className="sm:hidden">{lastRefresh.toLocaleTimeString()}</span>
+          {lastRefresh && (
+            <>
+              <span className="hidden sm:inline">Updated {lastRefresh.toLocaleTimeString()}</span>
+              <span className="sm:hidden">{lastRefresh.toLocaleTimeString()}</span>
+            </>
+          )}
           <button
             onClick={handleManualRefresh}
             className="p-2 sm:p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors touch-manipulation"
@@ -382,36 +395,63 @@ export function KanbanBoard({ initialTasks, users = [], projects = [] }: KanbanB
         />
       </div>
 
-      {/* Kanban Board */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
+      {/* Kanban Board - Only render DndContext after mount to avoid hydration mismatch */}
+      {isMounted ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4 -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-1 snap-x snap-mandatory md:snap-none">
+            {KANBAN_COLUMNS.map((column) => (
+              <KanbanColumn
+                key={column.id}
+                id={column.id}
+                title={column.title}
+                color={column.color}
+                tasks={getTasksByStatus(column.id)}
+                onTaskClick={handleTaskClick}
+                onAddTask={handleAddTask}
+              />
+            ))}
+          </div>
+
+          <DragOverlay>
+            {activeTask ? (
+              <div className="rotate-3 opacity-90">
+                <TaskCard task={activeTask} />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      ) : (
         <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4 -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-1 snap-x snap-mandatory md:snap-none">
           {KANBAN_COLUMNS.map((column) => (
-            <KanbanColumn
+            <div
               key={column.id}
-              id={column.id}
-              title={column.title}
-              color={column.color}
-              tasks={getTasksByStatus(column.id)}
-              onTaskClick={handleTaskClick}
-              onAddTask={handleAddTask}
-            />
+              className="flex flex-col w-[85vw] sm:w-[300px] md:min-w-[280px] md:max-w-[320px] md:w-auto shrink-0 snap-center md:snap-align-none rounded-xl border-2 border-slate-500/50 bg-slate-500/5"
+            >
+              <div className="flex items-center justify-between p-3 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold text-sm text-slate-400">{column.title}</h2>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {getTasksByStatus(column.id).length}
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-320px)] sm:max-h-[calc(100vh-280px)]">
+                <div className="animate-pulse space-y-2">
+                  {[...Array(Math.min(getTasksByStatus(column.id).length, 3))].map((_, i) => (
+                    <div key={i} className="h-20 bg-muted rounded-lg" />
+                  ))}
+                </div>
+              </div>
+            </div>
           ))}
         </div>
-
-        <DragOverlay>
-          {activeTask ? (
-            <div className="rotate-3 opacity-90">
-              <TaskCard task={activeTask} />
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      )}
 
       <TaskModal
         isOpen={modalOpen}

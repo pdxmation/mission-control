@@ -2,9 +2,12 @@ import { test, expect } from '@playwright/test'
 
 test.describe('API Endpoints', () => {
   const baseURL = 'http://localhost:3000'
+  const apiToken = process.env.API_TOKEN
+  const authHeaders = apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined
 
   test('GET /api/tasks - should return tasks', async ({ request }) => {
-    const response = await request.get(`${baseURL}/api/tasks`)
+    test.skip(!apiToken, 'API_TOKEN not set')
+    const response = await request.get(`${baseURL}/api/tasks`, { headers: authHeaders })
     
     expect(response.status()).toBe(200)
     
@@ -14,7 +17,8 @@ test.describe('API Endpoints', () => {
   })
 
   test('GET /api/tasks - should return tasks by status', async ({ request }) => {
-    const response = await request.get(`${baseURL}/api/tasks`)
+    test.skip(!apiToken, 'API_TOKEN not set')
+    const response = await request.get(`${baseURL}/api/tasks`, { headers: authHeaders })
     
     expect(response.status()).toBe(200)
     
@@ -24,6 +28,7 @@ test.describe('API Endpoints', () => {
   })
 
   test('POST /api/tasks - should create a task', async ({ request }) => {
+    test.skip(!apiToken, 'API_TOKEN not set')
     const newTask = {
       title: 'API Test Task ' + Date.now(),
       description: 'Created via Playwright API test',
@@ -32,6 +37,7 @@ test.describe('API Endpoints', () => {
     }
 
     const response = await request.post(`${baseURL}/api/tasks`, {
+      headers: authHeaders,
       data: newTask,
     })
 
@@ -43,8 +49,10 @@ test.describe('API Endpoints', () => {
   })
 
   test('PATCH /api/tasks/[id] - should update a task', async ({ request }) => {
+    test.skip(!apiToken, 'API_TOKEN not set')
     // First create a task
     const createResponse = await request.post(`${baseURL}/api/tasks`, {
+      headers: authHeaders,
       data: {
         title: 'Task to Update ' + Date.now(),
         status: 'BACKLOG',
@@ -56,6 +64,7 @@ test.describe('API Endpoints', () => {
     
     // Now update it
     const updateResponse = await request.patch(`${baseURL}/api/tasks/${created.id}`, {
+      headers: authHeaders,
       data: {
         title: 'Updated Task Title',
         priority: 'HIGH',
@@ -70,8 +79,10 @@ test.describe('API Endpoints', () => {
   })
 
   test('DELETE /api/tasks/[id] - should delete a task', async ({ request }) => {
+    test.skip(!apiToken, 'API_TOKEN not set')
     // First create a task
     const createResponse = await request.post(`${baseURL}/api/tasks`, {
+      headers: authHeaders,
       data: {
         title: 'Task to Delete ' + Date.now(),
         status: 'BACKLOG',
@@ -82,7 +93,7 @@ test.describe('API Endpoints', () => {
     const created = await createResponse.json()
     
     // Delete it
-    const deleteResponse = await request.delete(`${baseURL}/api/tasks/${created.id}`)
+    const deleteResponse = await request.delete(`${baseURL}/api/tasks/${created.id}`, { headers: authHeaders })
     expect(deleteResponse.status()).toBe(200)
   })
 })
@@ -90,9 +101,12 @@ test.describe('API Endpoints', () => {
 // Search API tests - require OPENAI_API_KEY
 test.describe('Search API', () => {
   const baseURL = 'http://localhost:3000'
+  const apiToken = process.env.API_TOKEN
+  const authHeaders = apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined
 
   test('GET /api/tasks/search - should search tasks', async ({ request }) => {
-    const response = await request.get(`${baseURL}/api/tasks/search?q=mission&limit=5`)
+    test.skip(!apiToken, 'API_TOKEN not set')
+    const response = await request.get(`${baseURL}/api/tasks/search?q=mission&limit=5`, { headers: authHeaders })
     
     // May return 500 if OPENAI_API_KEY not set
     if (response.status() === 500) {
@@ -108,7 +122,8 @@ test.describe('Search API', () => {
   })
 
   test('GET /api/tasks/search - should return similarity scores', async ({ request }) => {
-    const response = await request.get(`${baseURL}/api/tasks/search?q=email&limit=3`)
+    test.skip(!apiToken, 'API_TOKEN not set')
+    const response = await request.get(`${baseURL}/api/tasks/search?q=email&limit=3`, { headers: authHeaders })
     
     if (response.status() === 500) {
       test.skip(true, 'Search API requires OPENAI_API_KEY')

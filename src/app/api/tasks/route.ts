@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
-import { validateApiToken, unauthorizedResponse } from '../../../lib/api-auth'
+import { authorizeRequest, unauthorizedResponse } from '../../../lib/api-auth'
 import { embedTask } from '../../../lib/embeddings'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-// Check if request is from internal UI (no auth needed) or external API (auth required)
-function isInternalRequest(request: NextRequest): boolean {
-  const referer = request.headers.get('referer') || ''
-  const origin = request.headers.get('origin') || ''
-  // Allow requests from same origin (internal UI)
-  return referer.includes(process.env.BETTER_AUTH_URL || '') || 
-         origin.includes(process.env.BETTER_AUTH_URL || '') ||
-         referer.includes('localhost') ||
-         origin.includes('localhost') ||
-         !request.headers.get('authorization') // No auth header = likely internal fetch
-}
 
 /**
  * GET /api/tasks
@@ -24,8 +12,7 @@ function isInternalRequest(request: NextRequest): boolean {
  * Query params: ?status=IN_PROGRESS|BACKLOG|COMPLETED|BLOCKED
  */
 export async function GET(request: NextRequest) {
-  // For external API calls, require auth
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 
@@ -95,8 +82,7 @@ export async function GET(request: NextRequest) {
  * Create a new task
  */
 export async function POST(request: NextRequest) {
-  // For external API calls, require auth
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 

@@ -90,7 +90,15 @@ export async function embedTask(task: {
     `, id, task.id, embeddingStr)
     
   } catch (error) {
-    // Log but don't fail task operations if embedding fails
+    // Handle foreign key violation (task was deleted before embedding completed)
+    if (error instanceof Error && 'code' in error && (error as { code: string }).code === 'P2010') {
+      const meta = (error as { meta?: { code?: string } }).meta
+      if (meta?.code === '23503') {
+        // Task was deleted before embedding could be saved - this is expected, skip silently
+        return
+      }
+    }
+    // Log but don't fail task operations if embedding fails for other reasons
     console.error(`Failed to embed task ${task.id}:`, error)
   }
 }

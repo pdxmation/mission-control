@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 import dotenv from 'dotenv'
 
-// Load .env file for tests
+// Load .env.local first, then .env for tests
+dotenv.config({ path: '.env.local' })
 dotenv.config()
 
 export default defineConfig({
@@ -12,9 +13,11 @@ export default defineConfig({
   workers: 1, // Single worker to prevent server crashes
   reporter: 'html',
   timeout: 60000, // 60 second timeout per test
+  globalSetup: './tests/global-setup.mjs',
   
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://127.0.0.1:3000',
+    storageState: './tests/.auth/state.json',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -33,8 +36,8 @@ export default defineConfig({
 
   // Run local dev server before tests
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    command: 'npm run dev -- --hostname 127.0.0.1 --port 3000',
+    url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

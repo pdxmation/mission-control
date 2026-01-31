@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
-import { validateApiToken, unauthorizedResponse } from '../../../../../lib/api-auth'
+import { authorizeRequest, unauthorizedResponse } from '../../../../../lib/api-auth'
 
 interface RouteParams {
   params: Promise<{ id: string }>
-}
-
-// Check if request is from internal UI (no auth needed) or external API (auth required)
-function isInternalRequest(request: NextRequest): boolean {
-  const referer = request.headers.get('referer') || ''
-  const origin = request.headers.get('origin') || ''
-  return referer.includes(process.env.BETTER_AUTH_URL || '') || 
-         origin.includes(process.env.BETTER_AUTH_URL || '') ||
-         referer.includes('localhost') ||
-         origin.includes('localhost') ||
-         !request.headers.get('authorization')
 }
 
 /**
@@ -22,7 +11,7 @@ function isInternalRequest(request: NextRequest): boolean {
  * List all subtasks for a task
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 
@@ -49,7 +38,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Create a new subtask for a task
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 

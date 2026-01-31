@@ -46,6 +46,7 @@ src/generated/
 test-results/
 playwright-report/
 playwright/.cache/
+tests/.auth/
 .env
 
 # Database backups
