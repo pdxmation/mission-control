@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
-import { validateApiToken, unauthorizedResponse } from '../../../lib/api-auth'
+import { authorizeRequest, unauthorizedResponse } from '../../../lib/api-auth'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-// Check if request is from internal UI (no auth needed) or external API (auth required)
-function isInternalRequest(request: NextRequest): boolean {
-  const referer = request.headers.get('referer') || ''
-  const origin = request.headers.get('origin') || ''
-  return referer.includes(process.env.BETTER_AUTH_URL || '') || 
-         origin.includes(process.env.BETTER_AUTH_URL || '') ||
-         referer.includes('localhost') ||
-         origin.includes('localhost') ||
-         !request.headers.get('authorization')
-}
 
 /**
  * GET /api/documents
@@ -22,7 +11,7 @@ function isInternalRequest(request: NextRequest): boolean {
  * Query params: ?type=journal|note|concept|research&tag=tagname&search=query
  */
 export async function GET(request: NextRequest) {
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 
@@ -80,7 +69,7 @@ export async function GET(request: NextRequest) {
  * Create a new document
  */
 export async function POST(request: NextRequest) {
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 

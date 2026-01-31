@@ -1,27 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
-import { validateApiToken, unauthorizedResponse } from '../../../../lib/api-auth'
+import { authorizeRequest, unauthorizedResponse } from '../../../../lib/api-auth'
 import { searchTasksBySimilarity } from '../../../../lib/embeddings'
 
 export const dynamic = 'force-dynamic'
-
-// Check if request is from internal UI or external API
-function isInternalRequest(request: NextRequest): boolean {
-  const referer = request.headers.get('referer') || ''
-  const origin = request.headers.get('origin') || ''
-  return referer.includes(process.env.BETTER_AUTH_URL || '') || 
-         origin.includes(process.env.BETTER_AUTH_URL || '') ||
-         referer.includes('localhost') ||
-         origin.includes('localhost') ||
-         !request.headers.get('authorization')
-}
 
 /**
  * GET /api/tasks/search?q=<query>&limit=10
  * Semantic search for tasks
  */
 export async function GET(request: NextRequest) {
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 

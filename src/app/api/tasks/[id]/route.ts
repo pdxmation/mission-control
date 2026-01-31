@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../../lib/prisma'
-import { validateApiToken, unauthorizedResponse } from '../../../../lib/api-auth'
+import { authorizeRequest, unauthorizedResponse } from '../../../../lib/api-auth'
 import { embedTask, deleteTaskEmbedding } from '../../../../lib/embeddings'
 
 interface RouteParams {
   params: Promise<{ id: string }>
-}
-
-// Check if request is from internal UI (no auth needed) or external API (auth required)
-function isInternalRequest(request: NextRequest): boolean {
-  const referer = request.headers.get('referer') || ''
-  const origin = request.headers.get('origin') || ''
-  return referer.includes(process.env.BETTER_AUTH_URL || '') || 
-         origin.includes(process.env.BETTER_AUTH_URL || '') ||
-         referer.includes('localhost') ||
-         origin.includes('localhost') ||
-         !request.headers.get('authorization')
 }
 
 /**
@@ -23,7 +12,7 @@ function isInternalRequest(request: NextRequest): boolean {
  * Fetch a single task by ID
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 
@@ -81,7 +70,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Update a task
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 
@@ -210,7 +199,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  * Delete a task
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  if (!isInternalRequest(request) && !validateApiToken(request)) {
+  if (!(await authorizeRequest(request))) {
     return unauthorizedResponse()
   }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Bypass auth for testing (set BYPASS_AUTH=true in .env)

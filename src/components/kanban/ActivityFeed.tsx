@@ -69,7 +69,9 @@ export function ActivityFeed({ initialActivities = [] }: ActivityFeedProps) {
     try {
       const res = await fetch('/api/activity?limit=30')
       const data = await res.json()
-      setActivities(data)
+      if (Array.isArray(data)) {
+        setActivities(data)
+      }
     } catch (error) {
       console.error('Failed to fetch activities:', error)
     } finally {
