@@ -54,7 +54,16 @@ export const auth = betterAuth({
     "http://localhost:3000",
     "http://localhost:3001",
     process.env.BETTER_AUTH_URL || ""
-  ].filter(Boolean)
+  ].filter(Boolean),
+  advanced: {
+    useSecureCookies: process.env.NODE_ENV === "production",
+    defaultCookieAttributes: {
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      path: "/",
+    },
+  },
 })
 
 export type Session = typeof auth.$Infer.Session

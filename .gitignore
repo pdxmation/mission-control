@@ -52,3 +52,6 @@ tests/.auth/
 # Database backups
 backups/*.sql.gz
 backups/*.sql
+
+# Prisma
+generated/

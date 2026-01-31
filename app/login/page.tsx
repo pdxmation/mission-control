@@ -49,7 +49,9 @@ export default function LoginPage() {
       if (error) {
         setError(error.message || "Invalid OTP")
       } else {
-        window.location.href = "/"
+        const params = new URLSearchParams(window.location.search)
+        const callbackUrl = params.get('callbackUrl') || '/'
+        window.location.href = callbackUrl
       }
     } catch (err) {
       setError("Failed to verify OTP")
