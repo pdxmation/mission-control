@@ -33,7 +33,9 @@ export async function proxy(request: NextRequest) {
   // Note: We only check cookie existence here because middleware runs in Edge runtime
   // where Prisma/database access is not available. Actual session validation against
   // the database occurs in API routes via authorizeRequest() in Node.js runtime.
+  // In production with useSecureCookies, the cookie name is prefixed with __Secure-
   const sessionCookie = request.cookies.get("better-auth.session_token")
+    || request.cookies.get("__Secure-better-auth.session_token")
 
   if (!sessionCookie) {
     const loginUrl = new URL("/login", request.url)
